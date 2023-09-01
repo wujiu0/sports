@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiModelProperty;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.common.api.vo.Result;
@@ -12,12 +13,16 @@ import org.jeecg.common.aspect.annotation.AutoLog;
 import org.jeecg.common.system.base.controller.JeecgController;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.modules.supply_chain.modules.sport.entity.Participant;
+import org.jeecg.modules.supply_chain.modules.sport.enums.MatchStatsEnum;
+import org.jeecg.modules.supply_chain.modules.sport.service.ISportConfigService;
 import org.jeecg.modules.supply_chain.modules.sport.service.ISportParticipantService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -30,6 +35,20 @@ public class SportParticipantController extends JeecgController<Participant, ISp
     @Autowired
     private ISportParticipantService sportParticipantService;
 
+    @Autowired
+    private ISportConfigService configService;
+
+    @PostMapping("/start")
+    @ApiModelProperty("开始报名")
+    public Result<String> start() {
+        if (configService.getStatus(getNowYear()) == MatchStatsEnum.PROGRESS.getValue()) {
+            return Result.error("报名已经开始！");
+        } else if (configService.getStatus(getNowYear()) == MatchStatsEnum.FINISHED.getValue()) {
+            return Result.error("报名已经结束！");
+        }
+        configService.start(getNowYear());
+        return Result.ok("开始报名！");
+    }
 
     /**
      * 添加
@@ -37,51 +56,47 @@ public class SportParticipantController extends JeecgController<Participant, ISp
      * @param participant 参赛人员
      * @return
      */
-    @AutoLog(value = "参赛人员-添加")
-    @ApiOperation(value = "参赛人员-添加", notes = "参赛人员-添加")
+    @ApiOperation(value = "参赛人员-添加")
     @PostMapping(value = "/add")
     public Result<String> add(@RequestBody Participant participant) {
-
-        generateTarget(participant, 42);
-        sportParticipantService.save(participant);
+        if (configService.getStatus(getNowYear()) == MatchStatsEnum.NOT_STARTED.getValue()) {
+            return Result.error("报名还未开始！");
+        } else if (configService.getStatus(getNowYear()) == MatchStatsEnum.FINISHED.getValue()) {
+            return Result.error("报名已经结束！");
+        }
+        try {
+            participant.setCreateTime(getNowDateTime());
+            sportParticipantService.save(participant);
+        } catch (DuplicateKeyException e) {
+            return Result.error("该参赛人员已经存在！");
+        }
         return Result.OK("添加成功！");
     }
 
-    private void generateTarget(Participant participant, int targetTotal) {
-        // 获取下一个靶子数
-        LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Participant::getSex, participant.getSex());
-        long count = sportParticipantService.count(queryWrapper) + 1;
-
-        int quotient = (int) (count / targetTotal);
-        int mold = (int) (count % targetTotal);
-        int target = 0;
-        if (mold != 0) {
-            if (quotient % 2 == 0) {
-                target = mold;
-            } else {
-                target = targetTotal - mold + 1;
-            }
-        } else {
-            if (quotient % 2 == 0) {
-                target = mold + 1;
-            } else {
-                target = targetTotal - mold;
-            }
+    @ApiOperation(value = "参赛人员-分组")
+    @PostMapping(value = "/generateTarget")
+    public Result<String> generateTarget() {
+        if (configService.getStatus(getNowYear()) == MatchStatsEnum.NOT_STARTED.getValue()) {
+            return Result.error("报名还未开始！");
         }
-        // 设置靶子序号
-        participant.setTarget(target);
+        configService.close(getNowYear());
+
+        List<Participant> participantList0 = sportParticipantService.generateTarget(0);
+        sportParticipantService.updateBatchById(participantList0);
+        List<Participant> participantList1 = sportParticipantService.generateTarget(1);
+        sportParticipantService.updateBatchById(participantList1);
+        return Result.ok("分组成功！");
     }
+
 
     /**
      * 全部列表查询
      *
      * @return
      */
-    @ApiOperation(value = "参赛人员-全部列表查询", notes = "参赛人员-全部列表查询")
+    @ApiOperation(value = "参赛人员-全部列表查询")
     @GetMapping(value = "/queryAll")
-    @ResponseBody
-    public Result<List<Participant>> queryAll() {
+    public Result<List<Participant>> queryAll(int year) {
         LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
         List<Participant> participantList = sportParticipantService.list(queryWrapper);
         return Result.ok(participantList);
@@ -93,22 +108,11 @@ public class SportParticipantController extends JeecgController<Participant, ISp
      */
     @ApiOperation(value = "参赛人员-查询分组情况", notes = "参赛人员-查询分组情况")
     @GetMapping(value = "/queryGroup")
-    @ResponseBody
-    public Result<List<List<Participant>>> queryGroup(@RequestParam int sex) {
-        LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
-
-        queryWrapper.eq(Participant::getSex, sex)
-            .orderByAsc(Participant::getTarget)
-            .orderByAsc(Participant::getId);
-
-        List<Participant> participantList = sportParticipantService.list(queryWrapper);
-        List<List<Participant>> participantGroupList = new ArrayList<>(42);
-        for (int i = 0; i < 42; i++) {
-            participantGroupList.add(new ArrayList<>());
+    public Result<List<List<Participant>>> queryGroup(@RequestParam int sex, @RequestParam int year) {
+        if (configService.getStatus(year) != MatchStatsEnum.FINISHED.getValue()) {
+            return Result.error("报名还未结束！");
         }
-        participantList.forEach(participant -> {
-            participantGroupList.get(participant.getTarget() - 1).add(participant);
-        });
+        List<List<Participant>> participantGroupList = sportParticipantService.getGroup(sex, year);
         return Result.OK(participantGroupList);
     }
 
@@ -133,9 +137,8 @@ public class SportParticipantController extends JeecgController<Participant, ISp
      * @param
      * @return
      */
-    @AutoLog(value = "参赛人员-编辑")
-    @ApiOperation(value = "参赛人员-编辑", notes = "参赛人员-编辑")
-    @RequestMapping(value = "/edit", method = {RequestMethod.PUT, RequestMethod.POST})
+    @ApiOperation(value = "参赛人员-编辑")
+    @PostMapping(value = "/edit")
     public Result<String> edit(@RequestBody Participant participant) {
         sportParticipantService.updateById(participant);
         return Result.OK("编辑成功!");
@@ -155,4 +158,17 @@ public class SportParticipantController extends JeecgController<Participant, ISp
     }
 
 
+    /**
+     * 获取当前年份
+     */
+    private int getNowYear() {
+        return LocalDate.now().getYear();
+    }
+
+    /**
+     * 获取当前时间
+     */
+    private LocalDateTime getNowDateTime() {
+        return LocalDateTime.now();
+    }
 }

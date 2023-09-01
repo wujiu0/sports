@@ -10,13 +10,11 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
- * @Description: 参赛人员
- * @Author: jeecg-boot
- * @Date: 2023-05-18
- * @Version: V1.0
+ * 参赛人员
  */
 @Data
 @TableName("sport_participant")
@@ -76,4 +74,12 @@ public class Participant implements Serializable {
      */
     @ApiModelProperty(value = "靶子序号")
     private Integer target;
+    /**
+     * 组内位次
+     */
+    @ApiModelProperty(value = "组内位次")
+    private Integer indexInTarget;
+
+    @ApiModelProperty(value = "报名时间")
+    private LocalDateTime createTime;
 }

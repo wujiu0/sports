@@ -2,6 +2,10 @@ package org.jeecg.modules.supply_chain.modules.sport.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.modules.supply_chain.modules.sport.entity.Participant;
+import org.junit.jupiter.api.Test;
+
+import java.text.ParseException;
+import java.time.LocalDateTime;
 
 @Slf4j
 class SportParticipantControllerTest {
@@ -35,4 +39,12 @@ class SportParticipantControllerTest {
         participant.setTarget(target);
         log.info("{}", participant.getTarget());
     }
+
+    @Test
+    void dateTest() throws ParseException {
+
+        System.out.println(LocalDateTime.now().getYear()
+        );
+    }
+
 }

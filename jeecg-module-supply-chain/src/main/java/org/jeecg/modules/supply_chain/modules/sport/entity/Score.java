@@ -2,6 +2,7 @@ package org.jeecg.modules.supply_chain.modules.sport.entity;
 
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.annotations.ApiModel;
@@ -11,7 +12,7 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 @Data
-@TableName("sports_scores")
+@TableName("sport_score")
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = false)
 @ApiModel(value = "Score对象", description = "成绩")
@@ -42,11 +43,13 @@ public class Score {
      * 组号
      */
     @ApiModelProperty(value = "组号")
+    @TableField(value = "`group`")
     private Integer group;
     /**
      * 箭序号
      */
     @ApiModelProperty(value = "箭序号")
+    @TableField(value = "`order`")
     private Integer order;
     /**
      * 是否是x(0否1是)
