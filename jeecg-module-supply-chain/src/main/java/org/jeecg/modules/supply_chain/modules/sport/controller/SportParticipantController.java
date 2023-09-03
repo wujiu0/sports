@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiModelProperty;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.common.api.vo.Result;
@@ -28,7 +27,7 @@ import java.util.List;
 
 @Api(tags = "射箭比赛-参赛人员")
 @RestController
-@RequestMapping("/sport/participant")
+@RequestMapping("/participant")
 @Slf4j
 public class SportParticipantController extends JeecgController<Participant, ISportParticipantService> {
 
@@ -39,11 +38,11 @@ public class SportParticipantController extends JeecgController<Participant, ISp
     private ISportConfigService configService;
 
     @PostMapping("/start")
-    @ApiModelProperty("开始报名")
+    @ApiOperation("开始报名")
     public Result<String> start() {
         if (configService.getStatus(getNowYear()) == MatchStatsEnum.PROGRESS.getValue()) {
             return Result.error("报名已经开始！");
-        } else if (configService.getStatus(getNowYear()) == MatchStatsEnum.FINISHED.getValue()) {
+        } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.PROGRESS.getValue()) {
             return Result.error("报名已经结束！");
         }
         configService.start(getNowYear());
@@ -61,7 +60,7 @@ public class SportParticipantController extends JeecgController<Participant, ISp
     public Result<String> add(@RequestBody Participant participant) {
         if (configService.getStatus(getNowYear()) == MatchStatsEnum.NOT_STARTED.getValue()) {
             return Result.error("报名还未开始！");
-        } else if (configService.getStatus(getNowYear()) == MatchStatsEnum.FINISHED.getValue()) {
+        } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.PROGRESS.getValue()) {
             return Result.error("报名已经结束！");
         }
         try {
@@ -73,19 +72,36 @@ public class SportParticipantController extends JeecgController<Participant, ISp
         return Result.OK("添加成功！");
     }
 
-    @ApiOperation(value = "参赛人员-分组")
+    @PostMapping("/close")
+    @ApiOperation("结束报名")
+    public Result<String> close() {
+        if (configService.getStatus(getNowYear()) < MatchStatsEnum.PROGRESS.getValue()) {
+            return Result.error("报名还未开始！");
+        } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.PROGRESS.getValue()) {
+            return Result.error("报名已经结束！");
+        }
+        configService.close(getNowYear());
+        return Result.ok("结束报名！");
+    }
+
+    @ApiOperation(value = "参赛人员-抽签")
     @PostMapping(value = "/generateTarget")
     public Result<String> generateTarget() {
         if (configService.getStatus(getNowYear()) == MatchStatsEnum.NOT_STARTED.getValue()) {
             return Result.error("报名还未开始！");
+        } else if (configService.getStatus(getNowYear()) == MatchStatsEnum.PROGRESS.getValue()) {
+            return Result.error("报名还未结束！");
+        } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.GROUPING.getValue()) {
+            return Result.error("抽签已经完成！");
         }
-        configService.close(getNowYear());
 
         List<Participant> participantList0 = sportParticipantService.generateTarget(0);
         sportParticipantService.updateBatchById(participantList0);
         List<Participant> participantList1 = sportParticipantService.generateTarget(1);
         sportParticipantService.updateBatchById(participantList1);
-        return Result.ok("分组成功！");
+
+        configService.startMatch(getNowYear());
+        return Result.ok("抽签成功！");
     }
 
 
@@ -96,21 +112,17 @@ public class SportParticipantController extends JeecgController<Participant, ISp
      */
     @ApiOperation(value = "参赛人员-全部列表查询")
     @GetMapping(value = "/queryAll")
-    public Result<List<Participant>> queryAll(int year) {
+    public Result<List<Participant>> queryAll(@RequestParam int year) {
         LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
         List<Participant> participantList = sportParticipantService.list(queryWrapper);
         return Result.ok(participantList);
     }
 
-    /**
-     * @param sex 男生/女生组
-     * @return
-     */
-    @ApiOperation(value = "参赛人员-查询分组情况", notes = "参赛人员-查询分组情况")
+    @ApiOperation(value = "参赛人员-查询抽签情况", notes = "参赛人员-查询抽签情况")
     @GetMapping(value = "/queryGroup")
     public Result<List<List<Participant>>> queryGroup(@RequestParam int sex, @RequestParam int year) {
-        if (configService.getStatus(year) != MatchStatsEnum.FINISHED.getValue()) {
-            return Result.error("报名还未结束！");
+        if (configService.getStatus(year) < MatchStatsEnum.MATCHING.getValue()) {
+            return Result.error("抽签还未完成！");
         }
         List<List<Participant>> participantGroupList = sportParticipantService.getGroup(sex, year);
         return Result.OK(participantGroupList);

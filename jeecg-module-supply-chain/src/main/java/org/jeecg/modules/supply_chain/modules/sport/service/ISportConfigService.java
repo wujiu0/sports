@@ -6,19 +6,32 @@ import org.jeecg.modules.supply_chain.modules.sport.entity.Config;
 public interface ISportConfigService extends IService<Config> {
     /**
      * 开始报名
-     *
-     * @param year
-     * @return
      */
     Boolean start(int year);
 
     /**
      * 结束报名
-     *
-     * @param year
-     * @return
      */
     Boolean close(int year);
+
+    /**
+     * 开始比赛
+     */
+    Boolean startMatch(int year);
+
+    /**
+     * 下一轮
+     */
+    Integer nextRound(int year);
+
+    /**
+     * 下一组
+     */
+    Integer nextGroup(int year);
+
+    Boolean finish(int year);
+
+    Config getByYear(int year);
 
     /**
      * 获取当前比赛状态

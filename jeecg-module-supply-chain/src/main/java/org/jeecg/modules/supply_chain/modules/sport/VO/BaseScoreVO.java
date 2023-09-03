@@ -5,11 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class ParticipantScoreVo {
-
+@AllArgsConstructor
+@Data
+public class BaseScoreVO {
     @ApiModelProperty(value = "总分")
     private Integer total;
 

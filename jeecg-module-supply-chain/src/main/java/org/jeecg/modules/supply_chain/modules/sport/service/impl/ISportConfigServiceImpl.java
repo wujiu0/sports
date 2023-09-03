@@ -33,7 +33,7 @@ public class ISportConfigServiceImpl extends ServiceImpl<SportConfigMapper, Conf
 
         return this.update(configLambdaUpdateWrapper);
     }
-    
+
     @Override
     public Boolean start(int year) {
         return this.setStatus(year, MatchStatsEnum.PROGRESS.getValue());
@@ -41,7 +41,53 @@ public class ISportConfigServiceImpl extends ServiceImpl<SportConfigMapper, Conf
 
     @Override
     public Boolean close(int year) {
+        return this.setStatus(year, MatchStatsEnum.GROUPING.getValue());
+    }
+
+    @Override
+    public Boolean startMatch(int year) {
+        return this.setStatus(year, MatchStatsEnum.MATCHING.getValue());
+    }
+
+    @Override
+    public Integer nextRound(int year) {
+        Config config = this.getByYear(year);
+        if (config.getRound() == MAX_ROUND) {
+            return 0;
+        } else if (config.getGroup() != MAX_GROUP) {
+            return -1;
+        }
+        LambdaUpdateWrapper<Config> configLambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+        configLambdaUpdateWrapper.set(Config::getRound, config.getRound() + 1)
+            .set(Config::getGroup, 1)
+            .eq(Config::getCreateYear, year);
+        this.update(configLambdaUpdateWrapper);
+        return config.getRound();
+    }
+
+    @Override
+    public Integer nextGroup(int year) {
+        Integer group = this.getByYear(year).getGroup() + 1;
+        if (group > MAX_GROUP) {
+            return -1;
+        }
+        LambdaUpdateWrapper<Config> configLambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+        configLambdaUpdateWrapper.set(Config::getGroup, group)
+            .eq(Config::getCreateYear, year);
+        this.update(configLambdaUpdateWrapper);
+        return group;
+    }
+
+    @Override
+    public Boolean finish(int year) {
         return this.setStatus(year, MatchStatsEnum.FINISHED.getValue());
+    }
+
+    @Override
+    public Config getByYear(int year) {
+        LambdaQueryWrapper<Config> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Config::getCreateYear, year);
+        return this.getOne(queryWrapper);
     }
 
     private Boolean setStatus(int year, int status) {
@@ -53,9 +99,10 @@ public class ISportConfigServiceImpl extends ServiceImpl<SportConfigMapper, Conf
 
     @Override
     public Integer getStatus(int year) {
-        LambdaQueryWrapper<Config> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Config::getCreateYear, year);
-        return this.getOne(queryWrapper).getStatus();
+        return this.getByYear(year).getStatus();
     }
+
+    private final int MAX_ROUND = 4;
+    private final int MAX_GROUP = 6;
 
 }

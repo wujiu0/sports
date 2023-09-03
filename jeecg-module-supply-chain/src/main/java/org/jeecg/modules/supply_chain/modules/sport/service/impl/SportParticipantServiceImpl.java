@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,10 +24,9 @@ public class SportParticipantServiceImpl extends ServiceImpl<SportParticipantMap
     private ISportConfigService sportConfigService;
 
     @Override
-    public List<Participant> generateTarget(int sex) {
+    public List<Participant> generateTarget(Integer sex) {
         LambdaQueryWrapper<Participant> participantLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        participantLambdaQueryWrapper.eq(Participant::getSex, sex)
-            .orderByAsc(Participant::getLocation);
+        participantLambdaQueryWrapper.eq(Participant::getSex, sex).orderByAsc(Participant::getLocation);
         long count = this.count(participantLambdaQueryWrapper);
 
 
@@ -47,9 +47,11 @@ public class SportParticipantServiceImpl extends ServiceImpl<SportParticipantMap
 
             if (target > targetCount) {
                 reverseFlag = true;
+                target = targetCount;
                 indexInTarget++;
             } else if (target < 1) {
                 reverseFlag = false;
+                target = 1;
                 indexInTarget++;
             }
         }
@@ -57,39 +59,40 @@ public class SportParticipantServiceImpl extends ServiceImpl<SportParticipantMap
     }
 
     @Override
-    public Participant getByIdNumber(String idNumber, int year) {
+    public Participant getByIdNumber(String idNumber, Integer year) {
         LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Participant::getIdNumber, idNumber);
         return this.list(queryWrapper).stream().filter(item -> item.getCreateTime().getYear() == year).collect(Collectors.toList()).get(0);
     }
 
     @Override
-    public Participant getByTarget(Target target, int year) {
+    public Participant getByTarget(Target target, Integer year) {
         LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Participant::getTarget, target.getPrefix())
-            .eq(Participant::getIndexInTarget, target.getSuffix());
+        queryWrapper.eq(Participant::getTarget, target.getPrefix()).eq(Participant::getIndexInTarget, target.getSuffix());
         return this.list().stream().filter(item -> item.getCreateTime().getYear() == year).collect(Collectors.toList()).get(0);
     }
 
     @Override
-    public List<List<Participant>> getGroup(int sex, int year) {
+    public List<List<Participant>> getGroup(Integer sex, Integer year) {
 
-        LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Participant::getSex, sex)
-            .orderByAsc(Participant::getTarget)
-            .orderByAsc(Participant::getId);
+        List<Participant> participantList = this.getListBySexAndYear(sex, year);
 
-        List<Participant> participantList = this.list(queryWrapper);
         Integer targetCount = sportConfigService.getTargetCount(sex, year);
-        List<List<Participant>> participantGroupList = new ArrayList<>(targetCount);
+        List<List<Participant>> participantGroupList = new ArrayList<>();
         for (int i = 0; i < targetCount; i++) {
-            participantGroupList.add(new ArrayList<>());
+            participantGroupList.add(Arrays.asList(new Participant[4]));
         }
-        participantList.forEach(participant -> {
-            participantGroupList.get(participant.getTarget() - 1).add(participant);
-        });
+
+        participantList.forEach(participant -> participantGroupList.get(participant.getTarget() - 1).set(participant.getIndexInTarget() - 1, participant));
 
         return participantGroupList;
+    }
+
+    @Override
+    public List<Participant> getListBySexAndYear(Integer sex, Integer year) {
+        LambdaQueryWrapper<Participant> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Participant::getSex, sex);
+        return this.list(queryWrapper).stream().filter(item -> item.getCreateTime().getYear() == year).collect(Collectors.toList());
     }
 
 }

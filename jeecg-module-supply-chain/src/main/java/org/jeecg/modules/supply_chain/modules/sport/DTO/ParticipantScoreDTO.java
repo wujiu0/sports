@@ -1,7 +1,6 @@
 package org.jeecg.modules.supply_chain.modules.sport.DTO;
 
 import com.baomidou.mybatisplus.annotation.TableField;
-import org.jeecg.modules.supply_chain.modules.sport.entity.Target;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -9,11 +8,14 @@ import java.util.List;
 
 @Data
 public class ParticipantScoreDTO {
-    /**
-     * 靶子
-     */
-    @ApiModelProperty(value = "靶子")
-    private Target target;
+//    /**
+//     * 靶子
+//     */
+//    @ApiModelProperty(value = "靶子")
+//    private Target target;
+
+    @ApiModelProperty("身份证号")
+    private String idNumber;
     /**
      * 得分列表
      */

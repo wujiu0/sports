@@ -8,17 +8,19 @@ import java.util.List;
 
 
 public interface ISportParticipantService extends IService<Participant> {
-    List<Participant> generateTarget(int sex);
+    List<Participant> generateTarget(Integer sex);
 
-    Participant getByIdNumber(String idNumber, int year);
+    Participant getByIdNumber(String idNumber, Integer year);
 
     /**
      * 根据靶子查询参赛人员
      */
-    Participant getByTarget(Target target, int year);
+    Participant getByTarget(Target target, Integer year);
 
     /**
-     * 查询分组情况
+     * 查询抽签情况
      */
-    List<List<Participant>> getGroup(int sex, int year);
+    List<List<Participant>> getGroup(Integer sex, Integer year);
+
+    List<Participant> getListBySexAndYear(Integer sex, Integer year);
 }
