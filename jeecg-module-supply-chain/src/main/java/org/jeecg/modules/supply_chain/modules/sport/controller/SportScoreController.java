@@ -95,6 +95,7 @@ public class SportScoreController {
             }
             scoreService.save(score);
         }
+        this.computeRank();
         return Result.OK("添加成功！");
     }
 
@@ -142,9 +143,9 @@ public class SportScoreController {
         } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.MATCHING.getValue()) {
             return Result.error("比赛已经结束！");
         }
-        if (configService.getByYear(getNowYear()).getRound() != 4 || configService.getByYear(getNowYear()).getGroup() != 6) {
-            return Result.error("成绩还未录入完成！");
-        }
+//        if (configService.getByYear(getNowYear()).getRound() != 4 || configService.getByYear(getNowYear()).getGroup() != 6) {
+//            return Result.error("成绩还未录入完成！");
+//        }
         List<ScoreOverview> scoreOverviewList0 =
             scoreOverviewService.computeScoreOverview(SexEnum.FeMALE.getValue(), getNowYear());
         List<ScoreOverview> scoreOverviewList1 = scoreOverviewService.computeScoreOverview(SexEnum.MALE.getValue(),

@@ -15,14 +15,27 @@ import org.jeecg.modules.supply_chain.modules.sport.entity.Participant;
 import org.jeecg.modules.supply_chain.modules.sport.enums.MatchStatsEnum;
 import org.jeecg.modules.supply_chain.modules.sport.service.ISportConfigService;
 import org.jeecg.modules.supply_chain.modules.sport.service.ISportParticipantService;
+import org.jeecgframework.poi.excel.ExcelImportUtil;
+import org.jeecgframework.poi.excel.def.NormalExcelConstants;
+import org.jeecgframework.poi.excel.entity.ExportParams;
+import org.jeecgframework.poi.excel.entity.ImportParams;
+import org.jeecgframework.poi.excel.view.JeecgEntityExcelView;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Api(tags = "射箭比赛-参赛人员")
@@ -70,6 +83,79 @@ public class SportParticipantController extends JeecgController<Participant, ISp
             return Result.error("该参赛人员已经存在！");
         }
         return Result.OK("添加成功！");
+    }
+
+    /**
+     * 通过excel导入数据
+     *
+     * @param request
+     * @param response
+     * @return
+     */
+    @PostMapping("/importExcel")
+    @ApiOperation("通过excel导入数据")
+    public Result<?> importExcel(HttpServletRequest request, HttpServletResponse response) {
+//        super.importExcel()
+        MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+        Map<String, MultipartFile> fileMap = multipartRequest.getFileMap();
+        for (Map.Entry<String, MultipartFile> entity : fileMap.entrySet()) {
+            // 获取上传文件对象
+            MultipartFile file = entity.getValue();
+            ImportParams params = new ImportParams();
+            params.setTitleRows(1);
+            params.setHeadRows(1);
+            params.setNeedSave(true);
+            try {
+                List<Participant> list = ExcelImportUtil.importExcel(file.getInputStream(), Participant.class, params);
+//                过滤掉身份证号为空的数据
+                list = list.stream().filter(participant -> participant.getIdNumber() != null && !participant.getIdNumber().isEmpty()).collect(Collectors.toList());
+                list.forEach(participant -> {
+                    participant.setCreateTime(getNowDateTime());
+                });
+                sportParticipantService.saveBatch(list);
+                return Result.ok("文件导入成功！数据行数：" + list.size());
+            } catch (Exception e) {
+                String msg = e.getMessage();
+                log.error(msg, e);
+                if (msg != null && msg.contains("Duplicate entry")) {
+                    return Result.error("文件导入失败:有重复数据！");
+                } else {
+                    return Result.error("文件导入失败:" + e.getMessage());
+                }
+            } finally {
+                try {
+                    file.getInputStream().close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return Result.error("文件导入失败！");
+    }
+
+    @Value("${jeecg.path.upload}")
+    private String upLoadPath;
+
+    @GetMapping(value = "/exportXls")
+    @ApiOperation("导出")
+    public ModelAndView exportXls(HttpServletRequest request) {
+        Participant participant = new Participant();
+        String title = "参赛人员报名表";
+        // 组装查询条件
+//        QueryWrapper<Participant> queryWrapper = QueryGenerator.initQueryWrapper(participant, request.getParameterMap());
+
+        // 获取导出数据
+        List<Participant> exportList = sportParticipantService.list();
+        // Step.3 AutoPoi 导出Excel
+        ModelAndView mv = new ModelAndView(new JeecgEntityExcelView());
+
+        mv.addObject(NormalExcelConstants.FILE_NAME, title);
+        mv.addObject(NormalExcelConstants.CLASS, Participant.class);
+        ExportParams exportParams = new ExportParams(title, title);
+        exportParams.setImageBasePath(upLoadPath);
+        mv.addObject(NormalExcelConstants.PARAMS, exportParams);
+        mv.addObject(NormalExcelConstants.DATA_LIST, exportList);
+        return mv;
     }
 
     @PostMapping("/close")
@@ -133,8 +219,8 @@ public class SportParticipantController extends JeecgController<Participant, ISp
      * 分页列表查询
      */
     @AutoLog(value = "参赛人员-分页列表查询")
-    @ApiOperation(value = "参赛人员-分页列表查询", notes = "参赛人员-分页列表查询")
-    @GetMapping(value = "/list")
+//    @ApiOperation(value = "参赛人员-分页列表查询", notes = "参赛人员-分页列表查询")
+//    @GetMapping(value = "/list")
     public Result<IPage<Participant>> queryPageList(Participant participant, @RequestParam(name = "pageNo", defaultValue = "1") Integer pageNo, @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize, HttpServletRequest req) {
         QueryWrapper<Participant> queryWrapper = QueryGenerator.initQueryWrapper(participant, req.getParameterMap());
         Page<Participant> page = new Page<>(pageNo, pageSize);
