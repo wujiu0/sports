@@ -95,6 +95,11 @@ public class SportParticipantController extends JeecgController<Participant, ISp
     @PostMapping("/importExcel")
     @ApiOperation("通过excel导入数据")
     public Result<?> importExcel(HttpServletRequest request, HttpServletResponse response) {
+        if (configService.getStatus(getNowYear()) == MatchStatsEnum.NOT_STARTED.getValue()) {
+            return Result.error("报名还未开始！");
+        } else if (configService.getStatus(getNowYear()) > MatchStatsEnum.PROGRESS.getValue()) {
+            return Result.error("报名已经结束！");
+        }
 //        super.importExcel()
         MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
         Map<String, MultipartFile> fileMap = multipartRequest.getFileMap();
