@@ -11,6 +11,7 @@ import org.jeecg.common.api.vo.Result;
 import org.jeecg.common.aspect.annotation.AutoLog;
 import org.jeecg.common.system.base.controller.JeecgController;
 import org.jeecg.common.system.query.QueryGenerator;
+import org.jeecg.modules.supply_chain.modules.sport.VO.ParticipantInfoGroupVo;
 import org.jeecg.modules.supply_chain.modules.sport.entity.Participant;
 import org.jeecg.modules.supply_chain.modules.sport.enums.MatchStatsEnum;
 import org.jeecg.modules.supply_chain.modules.sport.service.ISportConfigService;
@@ -33,6 +34,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -209,6 +211,7 @@ public class SportParticipantController extends JeecgController<Participant, ISp
         return Result.ok(participantList);
     }
 
+    @Deprecated
     @ApiOperation(value = "参赛人员-查询抽签情况", notes = "参赛人员-查询抽签情况")
     @GetMapping(value = "/queryGroup")
     public Result<List<List<Participant>>> queryGroup(@RequestParam int sex, @RequestParam int year) {
@@ -217,6 +220,44 @@ public class SportParticipantController extends JeecgController<Participant, ISp
         }
         List<List<Participant>> participantGroupList = sportParticipantService.getGroup(sex, year);
         return Result.OK(participantGroupList);
+    }
+
+    @ApiOperation(value = "参赛人员-查询抽签情况(new)")
+    @GetMapping(value = "/queryGroupNew")
+    public Result<List<ParticipantInfoGroupVo>> queryGroupNew(@RequestParam int sex, @RequestParam int year) {
+        if (configService.getStatus(year) < MatchStatsEnum.MATCHING.getValue()) {
+            return Result.error("抽签还未完成！");
+        }
+        List<List<Participant>> participantGroupList = sportParticipantService.getGroup(sex, year);
+
+        List<ParticipantInfoGroupVo> resultList = new ArrayList<>();
+        participantGroupList.forEach(participantList -> {
+            ParticipantInfoGroupVo pgVo = new ParticipantInfoGroupVo();
+            for (int i = 0; i < participantList.size(); i++) {
+                Participant participant = participantList.get(i);
+                if (participant == null) continue;
+                switch (i) {
+                    case 0:
+                        pgVo.setLocationA(participant.getLocation());
+                        pgVo.setNameA(participant.getName());
+                        break;
+                    case 1:
+                        pgVo.setLocationB(participant.getLocation());
+                        pgVo.setNameB(participant.getName());
+                        break;
+                    case 2:
+                        pgVo.setLocationC(participant.getLocation());
+                        pgVo.setNameC(participant.getName());
+                        break;
+                    case 3:
+                        pgVo.setLocationD(participant.getLocation());
+                        pgVo.setNameD(participant.getName());
+                        break;
+                }
+            }
+            resultList.add(pgVo);
+        });
+        return Result.OK(resultList);
     }
 
 
