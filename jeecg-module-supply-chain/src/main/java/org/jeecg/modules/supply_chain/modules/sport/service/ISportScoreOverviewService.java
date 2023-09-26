@@ -12,4 +12,6 @@ public interface ISportScoreOverviewService extends IService<ScoreOverview> {
     List<ScoreOverview> getMainOverview(Integer participantId);
 
     ScoreOverview getTotalOverview(Integer participantId);
+
+    List<ScoreOverview> getRoundOverview(Integer participantId, Integer round);
 }

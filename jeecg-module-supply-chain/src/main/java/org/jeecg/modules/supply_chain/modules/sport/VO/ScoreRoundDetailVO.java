@@ -18,6 +18,6 @@ public class ScoreRoundDetailVO extends BaseScoreVO {
     private String targetName;
 
     @ApiModelProperty(value = "按组计分情况")
-    private List<BaseScoreVO> scorebyRoundList = new ArrayList<>();
+    private List<ScoreDetailVO> scorebyRoundList = new ArrayList<>();
 
 }

@@ -98,4 +98,12 @@ public class SportScoreOverviewServiceImpl extends ServiceImpl<SportScoreOvervie
             .eq(ScoreOverview::getGroup, 0);
         return this.getOne(queryWrapper);
     }
+
+    @Override
+    public List<ScoreOverview> getRoundOverview(Integer participantId, Integer round) {
+        LambdaQueryWrapper<ScoreOverview> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ScoreOverview::getParticipantId, participantId)
+            .eq(ScoreOverview::getRound, round);
+        return this.list(queryWrapper);
+    }
 }

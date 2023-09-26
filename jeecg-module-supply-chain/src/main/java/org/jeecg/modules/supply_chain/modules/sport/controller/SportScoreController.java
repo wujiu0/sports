@@ -180,12 +180,14 @@ public class SportScoreController {
             scoreRoundDetailVO.setTenCount(scoreService.getTenCountByParticipantId(participant.getId()));
             scoreRoundDetailVO.setXCount(scoreService.getXCountByParticipantId(participant.getId()));
             for (int round = 1; round <= 4; round++) {
-                BaseScoreVO scoreRoundItem = new BaseScoreVO();
+                ScoreDetailVO scoreRoundItem = new ScoreDetailVO();
+                List<ScoreOverview> roundOverview = scoreOverviewService.getRoundOverview(participant.getId(), round);
+                List<Integer> groupTotalScoreList = roundOverview.stream().map(ScoreOverview::getTotal).collect(Collectors.toList());
 
                 scoreRoundItem.setTotal(scoreService.totalByParticipantIdAndRound(participant.getId(), round));
                 scoreRoundItem.setXCount(scoreService.getXCountByParticipantIdAndRound(participant.getId(), round));
                 scoreRoundItem.setTenCount(scoreService.getTenCountByParticipantIdAndRound(participant.getId(), round));
-
+                scoreRoundItem.setScoreList(groupTotalScoreList);
                 scoreRoundDetailVO.getScorebyRoundList().add(scoreRoundItem);
             }
 
@@ -241,7 +243,7 @@ public class SportScoreController {
 
         List<ScoreLocationOverviewVO> resultList = new ArrayList<>();
 
-//        获取总分列表并按照单位抽签
+//        获取总分列表并按照单位排序
         List<List<ScoreOverview>> preOverviewList = new ArrayList<>(participantList.stream().map(participant ->
                 scoreOverviewService.getTotalOverview(participant.getId())
             )
