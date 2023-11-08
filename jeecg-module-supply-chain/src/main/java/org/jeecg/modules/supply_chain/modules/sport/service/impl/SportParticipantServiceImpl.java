@@ -33,6 +33,31 @@ public class SportParticipantServiceImpl extends ServiceImpl<SportParticipantMap
         sportConfigService.setTargetCount(sex, count, LocalDate.now().getYear());
 
         List<Participant> participantList = this.list(participantLambdaQueryWrapper);
+
+//        按照地区分组
+        List<List<Participant>> tmpList = new ArrayList<>();
+        participantList.stream().collect(Collectors.groupingBy(Participant::getLocation)).forEach((k, v) -> tmpList.add(v));
+        for (List<Participant> participants : tmpList) {
+//            打乱各地区内人员的顺序
+            participants.sort((o1, o2) -> {
+                if (Math.random() > 0.5) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+        }
+//        打乱地区的顺序
+        tmpList.sort((o1, o2) -> {
+            if (Math.random() > 0.5) {
+                return 1;
+            } else {
+                return -1;
+            }
+        });
+//        扁平化
+        participantList = tmpList.stream().flatMap(List::stream).collect(Collectors.toList());
+
         int targetCount = sportConfigService.getTargetCount(sex, LocalDate.now().getYear());
         int target = 1;
         int indexInTarget = 1;
